@@ -11,7 +11,6 @@
 <!-- Badges -->
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
-  <img src="https://img.shields.io/badge/status-production--ready-blue.svg" alt="Status">
   <img src="https://img.shields.io/badge/backend-FastAPI-009688.svg" alt="FastAPI">
   <img src="https://img.shields.io/badge/cache-Redis-dc382d.svg" alt="Redis">
   <img src="https://img.shields.io/badge/metrics-Prometheus-e6522c.svg" alt="Prometheus">
@@ -51,7 +50,7 @@ The design prioritizes deterministic verification, replay resistance, and operat
 - Redis-backed nonce lifecycle, replay protection, and rate limiting.
 - Constant-time comparison for submitted results.
 - Prometheus metrics endpoint for monitoring and alerting.
-- Modular structure (server, client, infra) suitable for production deployment.
+- Modular structure (server, client, infra).
 - Test suite covering unit, integration, and stress scenarios.
 
 ---
@@ -217,7 +216,7 @@ Prometheus exposition endpoint.
 ### Production
 Do not use development certificates in production.
 
-Recommended production practices:
+Recommended practices:
 - Use an enterprise PKI (Vault PKI, step-ca, or managed CA)
 - Prefer short-lived certificates with automated rotation
 - Enforce certificate revocation (CRL/OCSP) where applicable
@@ -233,7 +232,7 @@ Recommended production practices:
 
 ---
 
-## Production Hardening Checklist
+## Hardening Checklist
 
 - Use a secure PKI and rotate keys regularly.
 - Enforce mTLS end-to-end or ensure forwarded identity headers are cryptographically authenticated.
@@ -293,7 +292,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 ## Contact
 
-For design questions, threat modeling, or production tuning, open an issue or start a discussion in the repository.
+For design questions, threat modeling or open an issue or start a discussion in the repository.
 
 Repository owner:
 - GitHub: https://github.com/ferasshita
