@@ -1,0 +1,10 @@
+fastapi==0.95.2
+uvicorn[standard]==0.22.0
+cryptography==41.0.3
+httpx==0.24.1
+redis==4.7.0
+prometheus-client==0.16.0
+pyjwt==2.8.0
+fakeredis==2.19.0
+pytest==7.4.0
+pytest-asyncio==0.22.0

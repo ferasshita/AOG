@@ -1,0 +1,68 @@
+version: "3.8"
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: aog_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - aog_net
+
+  server:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    container_name: aog_server
+    volumes:
+      - ../certs:/certs:ro
+      - ../server:/app/server:ro
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - HEADER_HMAC_SECRET=${HEADER_HMAC_SECRET}
+      - DEFAULT_ITERATIONS=100000
+      - DEFAULT_TARGET_MS=10000
+      - RATE_LIMIT_COUNT=10
+      - RATE_LIMIT_WINDOW=60
+    depends_on:
+      - redis
+    networks:
+      - aog_net
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: aog_nginx
+    ports:
+      - "8443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../certs:/etc/nginx/certs:ro
+    depends_on:
+      - server
+    networks:
+      - aog_net
+
+  client:
+    build:
+      context: ..
+      dockerfile: client/Dockerfile
+    container_name: aog_client
+    volumes:
+      - ../certs:/certs:ro
+      - ../client:/app/client:ro
+    environment:
+      - SERVER_URL=https://aog_nginx:443
+      - CLIENT_CERT=/certs/client.crt
+      - CLIENT_KEY=/certs/client.key
+      - CA_CERT=/certs/ca.crt
+    depends_on:
+      - nginx
+    networks:
+      - aog_net
+
+volumes:
+  redis_data:
+
+networks:
+  aog_net:
+    driver: bridge
