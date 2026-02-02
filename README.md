@@ -1,120 +1,299 @@
-# Agent-Only Access Gate (AOG)
+<!-- Project Title -->
+<h1 align="center">Agent-Only Access Gate (AOG)</h1>
 
-A production-ready open-source system that allows only authorized autonomous AI agents to pass deterministic compute challenges. Humans and unsanctioned clients are rejected through a combination of mTLS authentication, signed proxy headers, deterministic compute verification, nonce-based replay protection, distributed rate-limiting, attestation hooks, and robust operational controls.
+<!-- Project Subtitle -->
+<p align="center">
+  A AOC is a system that allows only authorized autonomous agents to pass deterministic compute challenges.
+  Human users and unsanctioned clients are rejected through a combination of strong identity binding, replay protection,
+  and verifiable deterministic work.
+</p>
 
-This repository contains a complete, modular implementation with:
-- FastAPI backend (server/) with Redis-backed state and Prometheus metrics.
-- Python Agent client (client/) illustrating mTLS and attestation usage.
-- Hardened nginx configuration (infra/) for TLS termination and header forwarding.
-- Dockerfiles and docker-compose for local testing (infra/docker-compose.yml).
-- Scripts for dev certificate generation (scripts/gen_certs.sh).
-- Unit, integration, and stress tests using pytest and fakeredis.
-- Comprehensive documentation and production hardening guidance (docs/).
+<!-- Badges -->
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
+  <img src="https://img.shields.io/badge/status-production--ready-blue.svg" alt="Status">
+  <img src="https://img.shields.io/badge/backend-FastAPI-009688.svg" alt="FastAPI">
+  <img src="https://img.shields.io/badge/cache-Redis-dc382d.svg" alt="Redis">
+  <img src="https://img.shields.io/badge/metrics-Prometheus-e6522c.svg" alt="Prometheus">
+  <img src="https://img.shields.io/badge/proxy-nginx-009639.svg" alt="nginx">
+</p>
 
-Why this exists
-- Many systems need to differentiate trusted automated agents from interactive humans and generic clients. AOG enforces strict, reproducible proof-of-work-like puzzles (deterministic compute) bound to cryptographic identity (mTLS, signed headers) and optional attestation to strongly reduce impersonation risk.
+<p align="center">
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#architecture-overview">Architecture</a> •
+  <a href="#security-model">Security</a> •
+  <a href="#api-summary">API</a> •
+  <a href="#production-hardening-checklist">Production</a> •
+  <a href="#contributing">Contributing</a>
+</p>
 
-Table of contents
-- Quick start
-- Architecture overview
-- Security model
-- API
-- Certificates and PKI
-- Production checklist
-- Development and testing
-- Contributing and license
+---
 
-Quick start (development)
-1. Clone this repo locally:
-   git clone https://github.com/<your-account>/<repo>.git
-   cd <repo>
+## Overview
 
-2. Generate development certificates (dev-only):
-   cd scripts
-   chmod +x gen_certs.sh
-   ./gen_certs.sh
-   cd ..
+Agent-Only Access Gate (AOG) is an open-source access control layer designed for environments where you must distinguish
+trusted, autonomous software agents from interactive humans and generic clients.
 
-3. Start the stack (infra/docker-compose.yml):
-   cd infra
-   HEADER_HMAC_SECRET="$(openssl rand -hex 32)" docker-compose up --build
+AOG enforces a strict request flow:
+1. A trusted agent proves identity (mTLS or trusted proxy forwarding).
+2. The server issues a one-time deterministic compute challenge.
+3. The agent performs deterministic work and submits the result.
+4. The server verifies the work, timing, identity binding, and consumes the nonce to prevent replay.
 
-   - nginx listens on host port 8443 (HTTPS + mTLS).
-   - server connects to Redis, exposes metrics on /metrics (via backend).
-   - a sample client service demonstrates an agent flow.
+The design prioritizes deterministic verification, replay resistance, and operational readiness.
 
-4. Run tests:
-   From repo root:
-     pytest -q
+---
 
-Architecture overview
-- Server (FastAPI)
-  - GET /challenge: issues a one-time deterministic challenge (nonce, seed, iterations, deadline).
-  - POST /task: accepts submissions; verifies deterministic result, timing, client identity, and prevents replay using Redis.
-  - /metrics: Prometheus metrics.
+## Features
 
-- Client (Agent)
-  - Uses mTLS client certs to authenticate.
-  - Requests a challenge, runs iterative SHA-256 (deterministic), submits result with runtime and trace fingerprint.
-  - Optionally creates a signed attestation JWT (dev placeholder).
+- Deterministic compute challenges bound to client identity.
+- Mutual TLS (mTLS) support and/or trusted proxy header forwarding with authenticity protection.
+- Redis-backed nonce lifecycle, replay protection, and rate limiting.
+- Constant-time comparison for submitted results.
+- Prometheus metrics endpoint for monitoring and alerting.
+- Modular structure (server, client, infra) suitable for production deployment.
+- Test suite covering unit, integration, and stress scenarios.
 
-- Networking
-  - nginx (or a cloud load balancer) handles TLS/mTLS termination and forwards the client certificate PEM in a header. For authenticity, a signing mechanism (HMAC) is used to sign forwarded header values; the server verifies that signature with a secret shared via a secure secret manager.
+---
 
-Security model (high level)
-- Authentication: mutual TLS or signed client-cert header forwarded from a trusted TLS terminator.
-- Nonce & Replay protection: challenges are stored in Redis with TTL; submitted nonces are consumed atomically (SETNX) and kept flagged to prevent reuse.
-- Deterministic verification: the server recomputes the iterative hash and compares with the submitted result using constant-time comparison.
-- Replay & rate limiting: distributed Redis-based rate limiter and used-nonce store.
-- Attestation: optional verification of agent-provided JWT signed by agent key or attestation mechanism (hook is provided).
-- Logging: structured logging with sensitive data redaction.
+## Repository Layout
 
-API (summary)
-- GET /challenge
-  - Requires trusted client identity (signed header or mTLS).
-  - Returns JSON: {nonce, seed, iterations, deadline_ts, issued_at}
+- `server/`  
+  FastAPI backend, validation, Redis-backed state, and Prometheus metrics.
 
-- POST /task
-  - Body: {nonce, result_hash, runtime_ms, client_fingerprint, trace_hash?, attestation?}
-  - Validates: existence, client binding, deadline, recomputed hash, runtime bounds, attestation (optional), and consumes nonce atomically.
-  - Responses: 200 accepted or appropriate 4xx/5xx.
+- `client/`  
+  Reference agent client showing mTLS usage, challenge solving, and submission flow.
 
-- GET /metrics
-  - Prometheus exposition of metrics.
+- `infra/`  
+  Nginx configuration, Dockerfiles, and `docker-compose` for local or staged deployments.
 
-Certificates and PKI
-- Dev script: scripts/gen_certs.sh (creates CA, server, client certs for local testing).
-- Production: do NOT use dev certs. Use enterprise PKI (Vault PKI, step-ca, or managed CA). Use short-lived certs, CRL/OCSP, and secrets manager for header HMAC and other secrets.
+- `scripts/`  
+  Development utilities such as certificate generation.
 
-Production hardening checklist (essentials)
+- `tests/`  
+  Unit, integration, and stress tests.
+
+- `docs/`  
+  Architecture and operational guidance, hardening notes, and design references.
+
+---
+
+## Quick Start
+
+### Prerequisites
+- Docker and Docker Compose (recommended for local evaluation)
+- OpenSSL (for generating a development HMAC secret and dev certificates)
+
+### 1) Clone the repository
+```bash
+git clone https://github.com/ferasshita/AOG.git
+cd AOG
+```
+
+### 2) Generate development certificates (development only)
+```bash
+cd scripts
+chmod +x gen_certs.sh
+./gen_certs.sh
+cd ..
+```
+
+### 3) Start the stack
+```bash
+cd infra
+HEADER_HMAC_SECRET="$(openssl rand -hex 32)" docker-compose up --build
+```
+
+Notes:
+- Nginx listens on host port `8443` (HTTPS + mTLS, depending on configuration).
+- The backend connects to Redis and exposes Prometheus metrics at `/metrics`.
+
+### 4) Run tests (from repository root)
+```bash
+pytest -q
+```
+
+---
+
+## Architecture Overview
+
+### Components
+
+#### Server (FastAPI)
+- Issues one-time challenges
+- Validates and consumes submissions
+- Stores ephemeral and replay-prevention state in Redis
+- Exposes Prometheus metrics
+
+#### Client (Reference Agent)
+- Authenticates via client certificates (mTLS)
+- Requests challenges
+- Performs deterministic iterative hashing
+- Submits result with runtime metadata and optional attestation token
+
+#### Networking / Edge
+- Nginx (or a cloud load balancer) terminates TLS/mTLS
+- For deployments that forward client identity via headers, a signing mechanism is used to authenticate forwarded values
+
+---
+
+## Security Model
+
+### Identity and Authentication
+AOG supports:
+- Mutual TLS (recommended where possible)
+- Trusted proxy header forwarding, with authenticity protection (HMAC-signed forwarding) when mTLS terminates upstream
+
+### Challenge Binding
+Challenges are bound to:
+- A server-issued nonce
+- A deterministic seed and iteration count
+- A strict deadline
+- A client identity/fingerprint
+
+### Replay Protection
+- Challenges are stored in Redis with TTL.
+- Nonces are consumed atomically and marked as used.
+- Replay attempts are rejected deterministically.
+
+### Deterministic Verification
+- The server recomputes the deterministic work using the provided parameters.
+- Result verification uses constant-time comparison to reduce timing side channels.
+
+### Rate Limiting and Abuse Controls
+- Distributed rate limiting can be enforced via Redis, protecting against brute force and excessive challenge issuance.
+
+### Attestation (Optional)
+AOG can accept an agent-provided attestation token (for example, a JWT) and includes integration hooks for:
+- Agent key-based signatures
+- Hardware attestation (TPM, SGX) or cloud attestation services
+
+---
+
+## API Summary
+
+### `GET /challenge`
+Issues a one-time deterministic challenge.
+
+- Requires trusted client identity (mTLS or verified forwarded identity)
+- Returns JSON:
+  - `nonce`
+  - `seed`
+  - `iterations`
+  - `deadline_ts`
+  - `issued_at`
+
+### `POST /task`
+Submits a solved challenge.
+
+- Body (example fields):
+  - `nonce`
+  - `result_hash`
+  - `runtime_ms`
+  - `client_fingerprint`
+  - `trace_hash` (optional)
+  - `attestation` (optional)
+
+Validation typically includes:
+- Challenge existence and freshness
+- Client binding and identity checks
+- Deadline enforcement
+- Deterministic recomputation and constant-time match
+- Runtime bounds checks (policy dependent)
+- Optional attestation verification
+- Atomic nonce consumption
+
+### `GET /metrics`
+Prometheus exposition endpoint.
+
+---
+
+## Certificates and PKI
+
+### Development
+- Use `scripts/gen_certs.sh` to generate local development certificates.
+- Development certificates are for local testing only.
+
+### Production
+Do not use development certificates in production.
+
+Recommended production practices:
+- Use an enterprise PKI (Vault PKI, step-ca, or managed CA)
+- Prefer short-lived certificates with automated rotation
+- Enforce certificate revocation (CRL/OCSP) where applicable
+- Store secrets (for example `HEADER_HMAC_SECRET`) in a secrets manager (Vault, AWS Secrets Manager, GCP Secret Manager, etc.)
+
+---
+
+## Observability
+
+- Prometheus metrics are exposed via `/metrics`.
+- Integrate with Grafana dashboards and alerting policies.
+- Ensure logs are structured and redact sensitive values (nonces, seeds, private keys, credentials).
+
+---
+
+## Production Hardening Checklist
+
 - Use a secure PKI and rotate keys regularly.
-- Enforce mTLS at the backend or signed header authenticity at the proxy (with header HMAC secret).
-- Replace in-memory stores with Redis (already implemented).
-- Add CRL/OCSP checks and certificate revocation handling.
-- Integrate hardware attestation (TPM/SGX) or cloud attestation service for stronger guarantees.
-- Add monitoring, alerting, and dashboards for metrics (Prometheus + Grafana).
-- Harden nginx TLS ciphers and settings; enable HSTS and HTTP/2 as appropriate.
-- Run adversarial load/stress testing and validation.
+- Enforce mTLS end-to-end or ensure forwarded identity headers are cryptographically authenticated.
+- Run Redis in a highly-available configuration where required.
+- Enforce strict TLS configuration at the edge (modern ciphers, TLS 1.2+ or TLS 1.3, HSTS where applicable).
+- Add certificate revocation handling (CRL/OCSP) and operational processes.
+- Implement robust rate limiting and anomaly detection.
+- Perform adversarial testing and load/stress testing before deployment.
+- Separate duties and secure CI/CD secrets and signing keys.
 
-Development & testing
-- Python environment:
-  - Install dependencies: pip install -r requirements.txt
-- Tests:
-  - Unit & integration: pytest tests/unit tests/integration
-  - Stress tests: pytest tests/stress
-- Linting / formatting: add and run your preferred linters (black/flake8/isort).
+---
 
-Operational notes
-- Secret management: use Vault or cloud provider KMS to store HEADER_HMAC_SECRET and production secrets.
-- Logging: ensure logs are shipped securely and do not contain seeds or private keys.
-- Scaling: run multiple backends behind a load balancer; Redis ensures shared state for consumed nonces and rate-limiting.
+## Development and Testing
 
-Contributing
-- Contributions are welcome. Please open issues and PRs against this repo; include tests for all functional changes.
-- See docs/ for architecture and operations guides.
+### Install dependencies
+```bash
+pip install -r requirements.txt
+```
 
-License
-- This project is provided under the MIT License. See LICENSE for details.
+### Run tests
+- Unit tests:
+```bash
+pytest tests/unit
+```
 
-Contact
-- For design questions, attack modeling, or production tuning, open an issue or start a discussion in the repository.
+- Integration tests:
+```bash
+pytest tests/integration
+```
+
+- Stress tests:
+```bash
+pytest tests/stress
+```
+
+---
+
+## Contributing
+
+Contributions are welcome.
+
+Suggested workflow:
+1. Fork the repository and create a feature branch.
+2. Add tests for functional changes.
+3. Ensure all tests pass locally.
+4. Submit a pull request with a clear description and rationale.
+
+If you are proposing security-sensitive changes, include a short threat analysis and expected operational impact.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Contact
+
+For design questions, threat modeling, or production tuning, open an issue or start a discussion in the repository.
+
+Repository owner:
+- GitHub: https://github.com/ferasshita
