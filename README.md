@@ -3,15 +3,9 @@
 
 <!-- Project Subtitle -->
 <p align="center">
-  A AOC is a system that allows only authorized autonomous agents to pass deterministic compute challenges.
-  Human users and unsanctioned clients are rejected through a combination of strong identity binding, replay protection,
-  and verifiable deterministic work.
-</p>
-
-<!-- Security Notice -->
-<p align="center">
-  <strong>⚠️ PROOF-OF-CONCEPT ONLY</strong><br>
-  <em>Hash-based challenges cannot reliably distinguish humans from AI agents. See Security Model section for details.</em>
+  A system that allows only authorized autonomous agents to pass verification challenges.
+  Agents are authenticated through a combination of strong identity binding, reasoning challenges,
+  autonomy attestation, replay protection, and verifiable work.
 </p>
 
 <!-- Badges -->
@@ -41,23 +35,25 @@ trusted, autonomous software agents from interactive humans and generic clients.
 
 AOG enforces a strict request flow:
 1. A trusted agent proves identity (mTLS or trusted proxy forwarding).
-2. The server issues a one-time deterministic compute challenge.
-3. The agent performs deterministic work and submits the result.
-4. The server verifies the work, timing, identity binding, and consumes the nonce to prevent replay.
+2. The server issues a one-time verification challenge (reasoning-based or computational).
+3. The agent solves the challenge and provides autonomy attestation.
+4. The server verifies the solution, autonomy claims, timing, identity binding, and consumes the nonce to prevent replay.
 
-The design prioritizes deterministic verification, replay resistance, and operational readiness.
+The design prioritizes reasoning verification, autonomy attestation, replay resistance, and operational readiness.
 
 ---
 
 ## Features
 
-- Deterministic compute challenges bound to client identity.
-- Mutual TLS (mTLS) support and/or trusted proxy header forwarding with authenticity protection.
+- Reasoning-based challenges requiring semantic understanding and problem-solving capabilities.
+- Autonomy attestation validation to verify continuous autonomous operation.
+- Client identity binding via mutual TLS (mTLS) or trusted proxy header forwarding.
 - Redis-backed nonce lifecycle, replay protection, and rate limiting.
 - Constant-time comparison for submitted results.
 - Prometheus metrics endpoint for monitoring and alerting.
 - Modular structure (server, client, infra).
 - Test suite covering unit, integration, and stress scenarios.
+- Backward compatibility with legacy computational challenges.
 
 ---
 
@@ -125,16 +121,18 @@ pytest -q
 ### Components
 
 #### Server (FastAPI)
-- Issues one-time challenges
+- Issues one-time challenges (reasoning or computational)
 - Validates and consumes submissions
+- Verifies autonomy attestation claims
 - Stores ephemeral and replay-prevention state in Redis
 - Exposes Prometheus metrics
 
 #### Client (Reference Agent)
 - Authenticates via client certificates (mTLS)
 - Requests challenges
-- Performs deterministic iterative hashing
-- Submits result with runtime metadata and optional attestation token
+- Solves reasoning challenges using semantic analysis and problem-solving
+- Generates autonomy attestation with operation tracking
+- Submits result with runtime metadata and attestation token
 
 #### Networking / Edge
 - Nginx (or a cloud load balancer) terminates TLS/mTLS
@@ -144,49 +142,49 @@ pytest -q
 
 ## Security Model
 
-> **⚠️ IMPORTANT SECURITY LIMITATION**
->
-> The current implementation uses **deterministic hash-based computational challenges** (iterative SHA-256). 
-> This approach has a **fundamental flaw**: it cannot reliably distinguish between autonomous AI agents and 
-> humans who write programs to solve the challenges.
->
-> **Why this matters:**
-> - Both humans and agents can compute hashes equally well using code
-> - Hash computation only proves "can you run code?" not "are you an AI agent?"
-> - Making the repository private, increasing iterations, or changing hash algorithms does not solve this
-> - Any human can write a simple script to compute the required hashes in milliseconds
->
-> **This implementation should be considered a proof-of-concept for demonstrating distributed challenge 
-> verification infrastructure, NOT a production-ready agent authentication system.**
->
-> For robust agent-vs-human distinction, consider:
-> - **Reasoning-based challenges** that require AI-specific capabilities (language understanding, problem-solving)
-> - **Autonomy attestation** mechanisms that verify continuous autonomous operation
-> - **Behavioral analysis** over time rather than single-point verification
-> - **Alternative approaches** like [BOTCHA](https://botcha.binary.ly) that use reasoning + attestation
->
-> See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed analysis of this limitation.
+AOG implements a multi-layered verification approach combining cryptographic identity, reasoning challenges, 
+and autonomy attestation to authenticate autonomous agents.
 
 ### Identity and Authentication
 AOG supports:
 - Mutual TLS (recommended where possible)
 - Trusted proxy header forwarding, with authenticity protection (HMAC-signed forwarding) when mTLS terminates upstream
 
+### Challenge Types
+
+#### Reasoning Challenges
+- Semantic analysis of code patterns and design principles
+- Logic reasoning and problem-solving tasks
+- Context understanding and system design questions
+- Requires AI-specific capabilities for solving
+
+#### Autonomy Attestation
+- Continuous operation time tracking
+- Autonomous action logging
+- Decision chain evidence
+- System behavior validation
+
+#### Legacy Challenges
+- Computational challenges for backward compatibility
+- Deterministic iterative hashing
+- Maintained for transition support
+
 ### Challenge Binding
 Challenges are bound to:
 - A server-issued nonce
-- A deterministic seed and iteration count
 - A strict deadline
 - A client identity/fingerprint
+- Challenge-specific parameters (question, seed, etc.)
 
 ### Replay Protection
 - Challenges are stored in Redis with TTL.
 - Nonces are consumed atomically and marked as used.
 - Replay attempts are rejected deterministically.
 
-### Deterministic Verification
-- The server recomputes the deterministic work using the provided parameters.
-- Result verification uses constant-time comparison to reduce timing side channels.
+### Verification Process
+- The server validates reasoning answers using constant-time comparison
+- Autonomy attestation is verified for completeness and validity
+- Result verification uses cryptographic techniques to reduce timing side channels
 
 ### Rate Limiting and Abuse Controls
 - Distributed rate limiting can be enforced via Redis, protecting against brute force and excessive challenge issuance.
@@ -201,34 +199,42 @@ AOG can accept an agent-provided attestation token (for example, a JWT) and incl
 ## API Summary
 
 ### `GET /challenge`
-Issues a one-time deterministic challenge.
+Issues a one-time verification challenge.
 
 - Requires trusted client identity (mTLS or verified forwarded identity)
+- Query parameters:
+  - `challenge_type`: "reasoning" (default) or "legacy"
 - Returns JSON:
   - `nonce`
-  - `seed`
-  - `iterations`
+  - `challenge_type`
+  - `question` (for reasoning challenges)
+  - `seed` (for all challenges)
+  - `iterations` (for legacy challenges)
   - `deadline_ts`
   - `issued_at`
 
 ### `POST /task`
 Submits a solved challenge.
 
-- Body (example fields):
+- Body fields:
   - `nonce`
-  - `result_hash`
+  - `challenge_type`
+  - `answer` (for reasoning challenges)
+  - `result_hash` (for legacy challenges)
   - `runtime_ms`
   - `client_fingerprint`
+  - `autonomy_attestation` (for reasoning challenges)
   - `trace_hash` (optional)
   - `attestation` (optional)
 
-Validation typically includes:
+Validation includes:
 - Challenge existence and freshness
 - Client binding and identity checks
 - Deadline enforcement
-- Deterministic recomputation and constant-time match
+- Answer verification (reasoning) or hash verification (legacy)
+- Autonomy attestation validation (reasoning)
 - Runtime bounds checks (policy dependent)
-- Optional attestation verification
+- Optional JWT attestation verification
 - Atomic nonce consumption
 
 ### `GET /metrics`
