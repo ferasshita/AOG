@@ -1,114 +1,110 @@
 # Architecture - Agent-Only Access Gate
 
-## ⚠️ CRITICAL SECURITY LIMITATION
+## Overview
 
-**This architecture has a fundamental flaw that prevents it from reliably distinguishing between autonomous AI agents and humans.**
+Agent-Only Access Gate (AOG) implements a multi-layered verification system that combines cryptographic identity, 
+reasoning challenges, and autonomy attestation to authenticate autonomous agents.
 
-### The Problem
+### Core Design Principles
 
-The system relies on **deterministic hash-based computational challenges** (iterative SHA-256 hashing). While this approach can demonstrate distributed challenge verification infrastructure, it **cannot** distinguish humans from AI agents because:
+The system enforces agent-only access through:
+1. **Strong Identity Binding** - mTLS-based mutual TLS authentication with client certificates
+2. **Reasoning Challenges** - Semantic analysis and problem-solving tasks requiring AI capabilities
+3. **Autonomy Attestation** - Continuous operation tracking and autonomous decision verification
+4. **Replay Protection** - Nonce-based one-time challenges preventing replay attacks
+5. **Rate Limiting** - Distributed rate limiting protecting against brute force attacks
 
-1. **Hash computation is trivial for both humans and agents**
-   - Any human can write a simple script to solve the challenge in milliseconds
-   - Example: 100,000 SHA-256 iterations can be solved in ~43ms with basic Python code
-   
-2. **Deterministic computation only proves "can you run code?"**
-   - It does NOT prove "are you an autonomous AI agent?"
-   - Both humans and agents have equal capability to compute hashes
-   
-3. **Common "solutions" don't fix the fundamental issue:**
-   - ❌ Making the repository private → humans can still write solver scripts
-   - ❌ Increasing iterations to millions → humans write the same script, just wait longer
-   - ❌ Using different hash algorithms → humans adapt their script in seconds
-   - ❌ Strict timing requirements → humans' scripts execute just as fast as agent code
-   - ❌ mTLS authentication → proves identity, not autonomy (humans can use certs too)
+### What This System Validates
 
-### What This System Actually Validates
+✅ **Successfully Validates:**
+- Cryptographic identity via mTLS
+- Reasoning and semantic understanding capabilities
+- Continuous autonomous operation patterns
+- Replay attack prevention (nonce-based)
+- Rate limiting and observability patterns
+- Constant-time verification to prevent timing attacks
 
-This implementation successfully demonstrates:
-- ✅ Distributed challenge/response protocol design
-- ✅ Replay attack prevention (nonce-based)
-- ✅ Identity binding with mTLS
-- ✅ Rate limiting and observability patterns
-- ✅ Constant-time cryptographic verification
+### Architecture Components
 
-But it does **NOT** validate:
-- ❌ That the solver is an autonomous AI agent
-- ❌ That the solver is not a human-written program
-- ❌ That the solver exhibits AI-specific capabilities
+#### Server (FastAPI)
+- **Challenge Generation**: Issues reasoning or computational challenges with strict deadlines
+- **Verification Engine**: Validates answers, autonomy attestation, and identity binding
+- **State Management**: Redis-backed storage for challenges and replay protection
+- **Metrics**: Prometheus endpoint for monitoring and alerting
 
-### Recommended Alternative Approaches
+#### Client Agent
+- **Identity**: Authenticates via mTLS client certificates
+- **Reasoning Solver**: Analyzes semantic challenges using AI capabilities
+- **Autonomy Tracking**: Generates attestation with operation logs and decision chains
+- **Challenge Submission**: Submits solutions with runtime metadata and attestation
 
-For systems that need to genuinely distinguish AI agents from humans:
+#### Reverse Proxy (nginx)
+- **TLS Termination**: Handles mTLS and forwards client cert info
+- **Header Signing**: HMAC-signed headers for identity forwarding
+- **Load Balancing**: Distributes traffic across backend instances
 
-1. **Reasoning-Based Challenges**
-   - Require natural language understanding, problem-solving, or semantic reasoning
-   - Tasks that AI agents can solve but are difficult to script (e.g., complex Q&A, context understanding)
-   
-2. **Autonomy Attestation**
-   - Verify continuous autonomous operation over time
-   - Behavioral analysis and decision-making patterns
-   - Multi-step processes requiring adaptive responses
-   
-3. **Hybrid Approaches**
-   - Combine computational challenges with reasoning tasks
-   - Systems like [BOTCHA](https://botcha.binary.ly) that use reasoning + autonomy attestation
-   - Time-series behavioral fingerprinting
+### Challenge Types
 
-4. **Hardware-Backed Attestation**
-   - TPM/SGX-based verification of execution environment
-   - Container/enclave attestation proving code provenance
-   - Note: Still doesn't prove *what* code is running (human script vs. AI agent)
+#### Reasoning Challenges
+- **Semantic Analysis**: Code pattern recognition and design principle identification
+- **Logic Reasoning**: Fallacy detection and logical inference
+- **Context Understanding**: System design and best practice questions
+- **Problem Solving**: Security and architecture decision-making
 
-### Use Case Recommendations
+These challenges require:
+- Natural language understanding
+- Domain knowledge (software engineering, security, system design)
+- Contextual analysis and reasoning
+- AI-specific problem-solving capabilities
 
-**✅ Use this implementation for:**
-- Learning about distributed challenge/response systems
-- Demonstrating replay protection and identity binding
-- Building infrastructure for future, more sophisticated verification methods
-- Testing distributed verification patterns
+#### Autonomy Attestation
+Agents must provide evidence of autonomous operation:
+- **Operation Time**: Duration of continuous autonomous execution
+- **Action Logging**: Record of autonomous actions taken
+- **Decision Chain**: Evidence of independent decision-making process
+- **System Metadata**: Runtime environment information
 
-**❌ Do NOT use this implementation for:**
-- Production systems requiring genuine agent-vs-human distinction
-- Security-critical agent authentication
-- Access control where human automation must be prevented
-- Any scenario where adversaries are motivated to bypass the system
+Validation criteria:
+- Minimum operation time threshold (≥1 second)
+- Non-empty action log with temporal ordering
+- Decision chain showing autonomous reasoning
+- Consistency checks across attestation fields
 
----
+#### Legacy Challenges (Backward Compatibility)
+- Deterministic iterative hashing (SHA-256)
+- Maintained for transition support
+- Can be gradually phased out
 
-## Original Architecture Design
+### Security Model
 
-### Overview
-- The system enforces that only automated agents (not humans) can pass by combining:
-  - mTLS-based mutual TLS authentication (client certificate).
-  - Deterministic, moderately expensive compute puzzles (iterative hashing).
-  - Strict per-challenge deadline checks.
-  - Nonce-based one-time challenges (replay protection).
-  - Fingerprinting of runtime and execution traces from agent.
-  - Rate-limiting and robust server-side verification.
+**Authentication:**
+- mTLS with client certificates
+- HMAC-signed header forwarding for proxy deployments
 
-Components
-- Server (FastAPI): Issues challenges (/challenge), verifies submissions (/task), stores ephemeral challenge state.
-- Client Agent (Python): Requests challenge, performs deterministic compute within strict timing, produces fingerprints and trace hashes, and submits results with mTLS.
-- Reverse Proxy (nginx): Optionally terminates TLS and performs mTLS, forwards client cert info to backend as header.
-- Attestation (placeholder): Hooks exist for container/enclave attestation verification.
+**Verification:**
+- Constant-time answer comparison (prevents timing attacks)
+- Cryptographic binding of challenge to client identity
+- Autonomy attestation validation
 
-Why humans fail
-- Humans (interactive callers):
-  - Cannot reliably perform exact deterministic iterative computation at required speed and produce trace fingerprint expected by server.
-  - Cannot produce a valid client certificate issued by the system CA.
-  - Non-interactive agents can be provisioned with long-term keys and automated scripts to compute the required puzzles within deadline; browsers or curl without proper client certificate will be rejected by mTLS.
+**Integrity:**
+- HMAC/hashing for header authenticity
+- Nonce-based challenge binding
 
-Why AI agents pass
-- Authorized agents have:
-  - Valid client certificate signed by CA (mTLS).
-  - Deterministic compute code that meets server puzzle requirements and produces trace fingerprints.
-  - Optionally attestation that ties runtime to an approved enclave/container.
+**Confidentiality:**
+- TLS encryption for all communications
+- Secure storage of challenge state in Redis
 
-Security model
-- Authentication: mTLS
-- Integrity: HMAC/hashing and deterministic verification
-- Confidentiality: TLS
-- Replay protection: per-challenge nonce and USED_NONCES store
-- Rate limiting: per-client fingerprint window-based limiter
-- Observability: structured logging in server
+**Replay Protection:**
+- Per-challenge nonce with atomic consumption
+- TTL-based challenge expiration
+- USED_NONCES tracking in Redis
+
+**Rate Limiting:**
+- Per-client distributed rate limiting
+- Window-based counters in Redis
+- Protection against brute-force attempts
+
+**Observability:**
+- Structured logging with event tracking
+- Prometheus metrics for monitoring
+- Anomaly detection hooks
