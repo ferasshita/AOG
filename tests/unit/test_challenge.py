@@ -3,13 +3,7 @@ Unit tests for deterministic task generator and iterative hash verifier.
 """
 
 import time
-from server.app.main import deterministic_task_parameters, iterative_hash
-
-def test_deterministic_params():
-    params = deterministic_task_parameters()
-    assert "seed" in params and "iterations" in params and "target_ms" in params
-    assert isinstance(params["seed"], str)
-    assert isinstance(params["iterations"], int)
+from server.app.security import iterative_hash
 
 def test_iterative_hash_known_vector():
     # Small iterations test for correctness

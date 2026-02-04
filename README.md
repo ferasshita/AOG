@@ -8,6 +8,12 @@
   and verifiable deterministic work.
 </p>
 
+<!-- Security Notice -->
+<p align="center">
+  <strong>⚠️ PROOF-OF-CONCEPT ONLY</strong><br>
+  <em>Hash-based challenges cannot reliably distinguish humans from AI agents. See Security Model section for details.</em>
+</p>
+
 <!-- Badges -->
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"></a>
@@ -137,6 +143,29 @@ pytest -q
 ---
 
 ## Security Model
+
+> **⚠️ IMPORTANT SECURITY LIMITATION**
+>
+> The current implementation uses **deterministic hash-based computational challenges** (iterative SHA-256). 
+> This approach has a **fundamental flaw**: it cannot reliably distinguish between autonomous AI agents and 
+> humans who write programs to solve the challenges.
+>
+> **Why this matters:**
+> - Both humans and agents can compute hashes equally well using code
+> - Hash computation only proves "can you run code?" not "are you an AI agent?"
+> - Making the repository private, increasing iterations, or changing hash algorithms does not solve this
+> - Any human can write a simple script to compute the required hashes in milliseconds
+>
+> **This implementation should be considered a proof-of-concept for demonstrating distributed challenge 
+> verification infrastructure, NOT a production-ready agent authentication system.**
+>
+> For robust agent-vs-human distinction, consider:
+> - **Reasoning-based challenges** that require AI-specific capabilities (language understanding, problem-solving)
+> - **Autonomy attestation** mechanisms that verify continuous autonomous operation
+> - **Behavioral analysis** over time rather than single-point verification
+> - **Alternative approaches** like [BOTCHA](https://botcha.binary.ly) that use reasoning + attestation
+>
+> See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed analysis of this limitation.
 
 ### Identity and Authentication
 AOG supports:
