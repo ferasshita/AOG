@@ -8,6 +8,25 @@ Features:
 - Attestation verification hook.
 - Prometheus metrics endpoint.
 - Structured logging and error handling.
+
+⚠️ CRITICAL SECURITY LIMITATION ⚠️
+===================================
+This implementation uses deterministic hash-based computational challenges that
+CANNOT reliably distinguish between autonomous AI agents and humans who write programs.
+
+The fundamental issue: Both humans and agents can compute hashes equally well using code.
+Hash computation only proves "can you run code?" not "are you an AI agent?"
+
+This should be considered a PROOF-OF-CONCEPT for distributed challenge verification
+infrastructure, NOT a production-ready agent authentication system.
+
+For systems requiring genuine agent-vs-human distinction, consider:
+- Reasoning-based challenges (language understanding, semantic reasoning)
+- Autonomy attestation mechanisms
+- Behavioral analysis over time
+- Alternative approaches like BOTCHA (botcha.binary.ly)
+
+See README.md and docs/ARCHITECTURE.md for detailed analysis.
 """
 
 import logging
@@ -94,6 +113,10 @@ async def get_challenge(request: Request, x_client_cert: Optional[str] = Header(
     """
     Issue a deterministic compute challenge. Requires a trusted client identity (from signed headers or mTLS).
     Stores challenge in Redis with TTL.
+    
+    ⚠️ SECURITY WARNING: Hash-based challenges cannot distinguish humans from AI agents.
+    Any human can write a simple script to solve these challenges. This endpoint is for
+    demonstration/proof-of-concept purposes only. See documentation for details.
     """
     client_id, client_cert_pem = extract_client_identity(request, x_client_cert, x_client_cert_sig)
     redis_store = await get_redis_store()
