@@ -12,7 +12,7 @@ import base64
 import secrets
 import json
 from typing import Optional, Dict, Any
-from .config import HEADER_HMAC_SECRET
+from .config import HEADER_HMAC_SECRET, MIN_AUTONOMOUS_OPERATION_TIME
 import logging
 
 logger = logging.getLogger("aog_server.security")
@@ -103,9 +103,9 @@ def validate_autonomy_attestation(attestation_data: Dict[str, Any]) -> bool:
     if not all(field in attestation_data for field in required_fields):
         return False
     
-    # Verify operation time is reasonable (at least a few seconds of autonomous operation)
+    # Verify operation time is reasonable (configurable minimum)
     operation_time = attestation_data.get("operation_time", 0)
-    if operation_time < 1.0:  # Less than 1 second is suspicious
+    if operation_time < MIN_AUTONOMOUS_OPERATION_TIME:
         return False
     
     # Verify autonomous actions list exists and has entries

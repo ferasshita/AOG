@@ -18,5 +18,7 @@ DEFAULT_ITERATIONS = int(os.environ.get("DEFAULT_ITERATIONS", "100000"))
 DEFAULT_TARGET_MS = int(os.environ.get("DEFAULT_TARGET_MS", "10000"))
 # Challenge type: "reasoning" (default) or "legacy"
 DEFAULT_CHALLENGE_TYPE = os.environ.get("DEFAULT_CHALLENGE_TYPE", "reasoning")
+# Minimum autonomous operation time in seconds for autonomy attestation
+MIN_AUTONOMOUS_OPERATION_TIME = float(os.environ.get("MIN_AUTONOMOUS_OPERATION_TIME", "1.0"))
 # If true, server will require attestation JWT with submission and attempt to verify it
 REQUIRE_ATTESTATION = os.environ.get("REQUIRE_ATTESTATION", "0") == "1"

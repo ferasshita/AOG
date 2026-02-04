@@ -210,7 +210,8 @@ async def submit_task(submission: TaskSubmission, request: Request, x_client_cer
 
     # Timing check: verify arrival before deadline with a small allowed skew
     now = time.time()
-    allowed_skew = 0.5  # 500 ms
+    # Increased skew for reasoning challenges which may require more processing time
+    allowed_skew = 0.5 if submission.challenge_type == "reasoning" else 0.1
     if now - challenge["deadline_ts"] > allowed_skew:
         tasks_rejected.inc()
         logger.info({"event": "deadline_missed", "nonce": submission.nonce, "now": now, "deadline": challenge["deadline_ts"]})

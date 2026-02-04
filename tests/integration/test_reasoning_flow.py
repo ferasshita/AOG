@@ -81,6 +81,20 @@ def test_client_answer_logic():
     answer3 = solve_reasoning_challenge(question3)
     assert answer3 == "B", f"Expected 'B', got '{answer3}'"
     
+    # Test error handling for unrecognized questions
+    try:
+        solve_reasoning_challenge("This is an unrecognized question format?")
+        assert False, "Should have raised ValueError for unrecognized question"
+    except ValueError as e:
+        assert "Unable to solve unrecognized question pattern" in str(e)
+    
+    # Test error handling for invalid input
+    try:
+        solve_reasoning_challenge("")
+        assert False, "Should have raised ValueError for empty question"
+    except ValueError as e:
+        assert "Invalid question" in str(e)
+    
     print("✓ All client-side reasoning logic tests passed")
 
 if __name__ == "__main__":

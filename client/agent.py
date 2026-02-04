@@ -33,7 +33,13 @@ def solve_reasoning_challenge(question: str) -> str:
     - Code analysis
     - Logic reasoning
     - System design understanding
+    
+    Raises:
+        ValueError: If question format is unrecognized or cannot be solved
     """
+    if not question or not isinstance(question, str):
+        raise ValueError("Invalid question: must be a non-empty string")
+    
     question_lower = question.lower()
     
     # Semantic analysis patterns
@@ -63,8 +69,11 @@ def solve_reasoning_challenge(question: str) -> str:
     if "distributed rate limiting" in question_lower and "o(1)" in question_lower:
         return "D"  # Redis hash with TTL
     
-    # Default fallback (should not reach here with proper challenges)
-    return "B"
+    # Unrecognized question pattern
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"Unrecognized question pattern: {question[:100]}...")
+    raise ValueError(f"Unable to solve unrecognized question pattern")
 
 def generate_autonomy_attestation(operation_start: float) -> dict:
     """

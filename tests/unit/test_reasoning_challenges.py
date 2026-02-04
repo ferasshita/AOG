@@ -27,9 +27,9 @@ def test_verify_reasoning_answer_correct():
     expected_hash = hashlib.sha256("A".encode()).hexdigest()
     
     # Test with correct answer
-    assert verify_reasoning_answer("A", expected_hash) == True
-    assert verify_reasoning_answer("a", expected_hash) == True  # Case insensitive
-    assert verify_reasoning_answer(" A ", expected_hash) == True  # Whitespace trimmed
+    assert verify_reasoning_answer("A", expected_hash) is True
+    assert verify_reasoning_answer("a", expected_hash) is True  # Case insensitive
+    assert verify_reasoning_answer(" A ", expected_hash) is True  # Whitespace trimmed
 
 def test_verify_reasoning_answer_incorrect():
     """Test incorrect answer rejection."""
@@ -37,9 +37,9 @@ def test_verify_reasoning_answer_incorrect():
     expected_hash = hashlib.sha256("A".encode()).hexdigest()
     
     # Test with wrong answers
-    assert verify_reasoning_answer("B", expected_hash) == False
-    assert verify_reasoning_answer("", expected_hash) == False
-    assert verify_reasoning_answer(None, expected_hash) == False
+    assert verify_reasoning_answer("B", expected_hash) is False
+    assert verify_reasoning_answer("", expected_hash) is False
+    assert verify_reasoning_answer(None, expected_hash) is False
 
 def test_validate_autonomy_attestation_valid():
     """Test valid autonomy attestation."""
@@ -55,7 +55,7 @@ def test_validate_autonomy_attestation_valid():
         ]
     }
     
-    assert validate_autonomy_attestation(attestation) == True
+    assert validate_autonomy_attestation(attestation) is True
 
 def test_validate_autonomy_attestation_missing_fields():
     """Test autonomy attestation with missing fields."""
@@ -64,21 +64,21 @@ def test_validate_autonomy_attestation_missing_fields():
         "autonomous_actions": [{"action": "test"}],
         "decision_chain": [{"decision": "test"}]
     }
-    assert validate_autonomy_attestation(attestation) == False
+    assert validate_autonomy_attestation(attestation) is False
     
     # Missing autonomous_actions
     attestation = {
         "operation_time": 5.0,
         "decision_chain": [{"decision": "test"}]
     }
-    assert validate_autonomy_attestation(attestation) == False
+    assert validate_autonomy_attestation(attestation) is False
     
     # Missing decision_chain
     attestation = {
         "operation_time": 5.0,
         "autonomous_actions": [{"action": "test"}]
     }
-    assert validate_autonomy_attestation(attestation) == False
+    assert validate_autonomy_attestation(attestation) is False
 
 def test_validate_autonomy_attestation_insufficient_operation_time():
     """Test autonomy attestation with insufficient operation time."""
@@ -87,7 +87,7 @@ def test_validate_autonomy_attestation_insufficient_operation_time():
         "autonomous_actions": [{"action": "test"}],
         "decision_chain": [{"decision": "test"}]
     }
-    assert validate_autonomy_attestation(attestation) == False
+    assert validate_autonomy_attestation(attestation) is False
 
 def test_validate_autonomy_attestation_empty_lists():
     """Test autonomy attestation with empty lists."""
@@ -96,11 +96,11 @@ def test_validate_autonomy_attestation_empty_lists():
         "autonomous_actions": [],  # Empty
         "decision_chain": [{"decision": "test"}]
     }
-    assert validate_autonomy_attestation(attestation) == False
+    assert validate_autonomy_attestation(attestation) is False
     
     attestation = {
         "operation_time": 5.0,
         "autonomous_actions": [{"action": "test"}],
         "decision_chain": []  # Empty
     }
-    assert validate_autonomy_attestation(attestation) == False
+    assert validate_autonomy_attestation(attestation) is False
